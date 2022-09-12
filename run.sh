@@ -1,2 +1,1 @@
-gcc server.cpp -o server
-gcc client.cpp -o client
+gcc main.c -o main
