@@ -85,11 +85,11 @@ int get_line(int sockfd, char *buf, int size)
     return count;
 }
 
-/// @brief 
-/// @param client_sock 
-/// @param file_id 
-/// @param server_reply 
-/// @return 
+/// @brief 发送服务器标识头部
+/// @param client_sock 客户端句柄
+/// @param file_id 文件句柄
+/// @param server_reply 服务器响应
+/// @return 成功0失败-1
 int header(int client_sock, FILE *file_id, Server_Reply server_reply)
 {
     char buf[BUFSIZ] = "\0";
@@ -117,6 +117,9 @@ int header(int client_sock, FILE *file_id, Server_Reply server_reply)
     return 0;
 }
 
+/// @brief 写入html文件内容
+/// @param client_sock 客户端句柄
+/// @param file_id 文件句柄
 void page(int client_sock, FILE *file_id)
 {
     char buf[1024];
@@ -130,6 +133,10 @@ void page(int client_sock, FILE *file_id)
     }
 }
 
+/// @brief 响应请求
+/// @param client_sock 客户端句柄
+/// @param path 文件路径
+/// @param server_reply 响应请求
 void do_http_response(int client_sock, char *path, Server_Reply server_reply)
 {
     FILE *resource = fopen(path, "r");
@@ -146,16 +153,18 @@ void do_http_response(int client_sock, char *path, Server_Reply server_reply)
     BUG("response has finished!");
 }
 
+/// @brief 发起请求
+/// @param pthread_sock 线程的句柄，就是多个句柄
+/// @return 空指针，线程终止信号
 void *do_http_requeset(void *pthread_sock)
 {
-    int read_len;
     int client_sock = *((int *)pthread_sock);
     char read_buf[BUFSIZ] = "\0";
     char head_buf[3][BUFSIZ]; //第一个是请求方法，第二个URL，最后是协议版本
     char path[BUFSIZ] = "\0";
     Server_Reply server_reply;
 
-    read_len = get_line(client_sock, read_buf, sizeof(read_buf));
+    int read_len = get_line(client_sock, read_buf, sizeof(read_buf));
     if (read_len > 0)
     {
         printf("has get the head line: %s\n", read_buf);
