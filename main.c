@@ -15,11 +15,19 @@
 #define IP "192.168.127.130"
 const int debug = 1;
 
+enum HEADER
+{
+    METHOD,
+    URL,
+    PROTOOL,
+    HEADER_TYPE_LEN
+}; // 第一个是请求方法，第二个URL，最后是协议版本
+
 /// @brief 响应结构体
 typedef struct
 {
-    int signal;        //响应代号
-    char describe[32]; //描述
+    int signal;        // 响应代号
+    char describe[32]; // 描述
 } Server_Reply;
 
 /// @brief 打印错误信息
@@ -69,16 +77,16 @@ int get_line(int sockfd, char *buf, int size)
             else if (c == '\n')
             {
                 break;
-            }
+            } // 读到http的换行符
             buf[count] = c;
             count++;
-        }
+        } // 读取正常
         else if (len == -1)
         {
             perror("read failed");
             count = -1;
             break;
-        }
+        } // 读取有误
         else
         {
             BUG("client close. \n");
@@ -95,14 +103,16 @@ int get_line(int sockfd, char *buf, int size)
 int header(int client_sock, FILE *file_id, Server_Reply server_reply)
 {
     char buf[BUFSIZ] = "\0";
+
+    // 粘接头部信息
     char tmp[64];
     snprintf(tmp, 64, "HTTP/1.0 %d %s\r\n", server_reply.signal, server_reply.describe);
     strcat(buf, tmp);
-
     strcat(buf, "Server:Moon Server\r\n \
                  Content-Type:text/html\r\n \
-                 Connection:Close\r\n");
+                 Connection:Close\r\n"); // 浏览器提示
 
+    // 获取html文件大小
     int fileid = fileno(file_id);
     struct stat st;
     SOCKET_ERROR(fstat(fileid, &st), "fstat");
@@ -114,10 +124,10 @@ int header(int client_sock, FILE *file_id, Server_Reply server_reply)
     {
         fprintf(stderr, "send failed.data:%s,reason:%s\n", buf, strerror(errno));
         return -1;
-    }
+    } // 发送头部给浏览器
 
     return 0;
-}
+} // 下一步交给page函数
 
 /// @brief 写入html文件内容
 /// @param client_sock 客户端句柄
@@ -129,12 +139,13 @@ void page(int client_sock, FILE *file_id)
 
     while (!feof(file_id))
     {
-        if(buf == NULL) return;
+        if (buf == NULL)
+            return; // 文件为空
         SOCKET_ERROR(write(client_sock, buf, strlen(buf)), "write");
-        BUG(buf);
+        //BUG(buf);
         fgets(buf, sizeof(buf), file_id);
-    }
-}
+    } // 文件到达末尾
+} // 发送完页面结束响应过程
 
 /// @brief 响应请求
 /// @param client_sock 客户端句柄
@@ -163,7 +174,7 @@ void *do_http_requeset(void *pthread_sock)
 {
     int client_sock = *((int *)pthread_sock);
     char read_buf[BUFSIZ] = "\0";
-    char head_buf[3][BUFSIZ]; //第一个是请求方法，第二个URL，最后是协议版本
+    char head_buf[HEADER_TYPE_LEN][BUFSIZ];
     char path[BUFSIZ] = "\0";
     Server_Reply server_reply;
 
@@ -171,29 +182,18 @@ void *do_http_requeset(void *pthread_sock)
     if (read_len > 0)
     {
         printf("has get the head line: %s\n", read_buf);
-        int j = 0, k = 0;
-        for (int i = 0; read_buf[i] != '\0'; i++)
-        {
-            if (read_buf[i] != ' ')
-            {
-                head_buf[j][k++] = read_buf[i];
-            }
-            else
-            {
-                head_buf[j][k] = '\0';
-                j++;
-                k = 0;
-            }
-        }
+
+        strcat(head_buf[METHOD],strtok(read_buf," "));
+        strcat(head_buf[URL],strtok(NULL," "));
+        strcat(head_buf[PROTOOL],strtok(NULL," "));
 
         do
         {
             read_len = get_line(client_sock, read_buf, sizeof(read_buf));
         } while (read_len > 0);
 
-        if (strncmp(head_buf[0], "GET", 4) == 0)
+        if (strncmp(head_buf[METHOD], "GET", 4) == 0)
         {
-            // get方法
             BUG("it is GET method");
             strcat(path, "./html_docs/");
             strcat(path, head_buf[1]);
@@ -204,7 +204,7 @@ void *do_http_requeset(void *pthread_sock)
                 strcpy(path, "./html_docs/not_found.html");
                 server_reply.signal = 404;
                 strcpy(server_reply.describe, "NOT FOUND");
-            }
+            }//文件不存在
             else
             {
                 if (S_ISDIR(st.st_mode))
@@ -213,17 +213,16 @@ void *do_http_requeset(void *pthread_sock)
                 }
                 server_reply.signal = 200;
                 strcpy(server_reply.describe, "OK");
-            }
-        }
+            }//使用默认路径
+        }// get方法
         else
         {
-            //其他方法
             BUG("it is other method\n");
             strcat(path, "./html_docs/unimplement.html");
             server_reply.signal = 501;
             strcpy(server_reply.describe, "Method Not Implemented");
-        }
-    }
+        }//其他方法不存在
+    }//方法正确
     else
     {
         BUG("request method error");
@@ -231,23 +230,23 @@ void *do_http_requeset(void *pthread_sock)
         server_reply.signal = 400;
         strcpy(server_reply.describe, "BAD REQUEST");
     }
-    BUG(path);
     do_http_response(client_sock, path, server_reply);
 
     close(client_sock);
     if (pthread_sock)
     {
         free(pthread_sock);
-    } //要在线程函数内终止，否则会发生错误
+    } // 要在线程函数内终止，否则会发生错误
     return NULL;
 }
 
 int main()
 {
-    socklen_t s;
     pthread_t thread_id;
+
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 
+    // 定义地址，协议和端口
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(PORT);

@@ -1,47 +1,65 @@
 <!DOCTYPE html>
-<html lang="en">
-<link rel="stylesheet" href="flexbox.css">
+<html>
 
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=1080px, initial-scale=1.0">
-    <title>flexbox</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            width: 10%;
+            background-color: #f1f1f1;
+            position: fixed;
+            height: 100%;
+            overflow: auto;
+        }
+
+        li a {
+            display: block;
+            color: #000;
+            padding: 8px 16px;
+            text-decoration: none;
+        }
+
+        li a.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        li a:hover:not(.active) {
+            background-color: #555;
+            color: white;
+        }
+    </style>
 </head>
 
 <body>
-    <header>
-        <div class="profile-name">
-            <h3>Quincy Larson</h3>
-            <h4>@ossia</h4>
-        </div>
-        <div class="follow-btn">
-            <button class="button" type="submit">+ 关注</button>
-        </div>
-    </header>
-    <div id="inner">
-        <p>I meet so many people who are in search of that one trick that will help them work smart. Even if you work
-            smart, you still have to work hard.</p>
-        <span class="date">1:32 PM - 12 Jan 2018</span>
-        <hr>
-    </div>
-    <footer>
-        <div class="stats">
-            <div class="Retweets">
-                <strong>107</strong> Retweets
-            </div>
-            <div class="likes">
-                <strong>431</strong> Likes
-            </div>
-        </div>
-        <div class="cta">
-            <button class="share-btn">Share</button>
-            <button class="retweet-btn">Retweet</button>
-            <button class="like-btn">Like</button>
-        </div>
-    </footer>
 
-    <a href="./javascript.html">javascript 基础引用</a>
+    <ul>
+        <li><a class="active" href="#home">Home</a></li>
+        <li><a href="show.html">News</a></li>
+        <li><a href="javascript.html">Contact</a></li>
+        <li><a href="test.html">About</a></li>
+    </ul>
+
+    <div style="margin-left:10%;padding:1px 16px;height:1000px;">
+        <h1>HomePage</h1>
+        <h2>FirstCharpter</h2>
+        <p></p>
+        <p></p>
+        <p>Some text..</p>
+        <p>Some text..</p>
+        <p>Some text..</p>
+        <p>Some text..</p>
+        <p>Some text..</p>
+        <p>Some text..</p>
+        <p>Some text..</p>
+    </div>
+
 </body>
 
 </html>
