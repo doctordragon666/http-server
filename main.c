@@ -26,15 +26,17 @@ typedef struct
 /// @param tip 错误信息
 void BUG(const char *tip)
 {
+    if (tip == NULL)
+        return;
     if (debug)
     {
-        fprintf(stderr, tip, sizeof(tip));
+        fprintf(stderr, tip, strlen(tip));
         printf("\n");
     }
 }
 
 /// @brief sock出错处理
-/// @param ret 
+/// @param ret
 /// @param method 错误的方法名字
 void SOCKET_ERROR(int ret, const char *method)
 {
@@ -127,6 +129,7 @@ void page(int client_sock, FILE *file_id)
 
     while (!feof(file_id))
     {
+        if(buf == NULL) return;
         SOCKET_ERROR(write(client_sock, buf, strlen(buf)), "write");
         BUG(buf);
         fgets(buf, sizeof(buf), file_id);
@@ -241,6 +244,7 @@ void *do_http_requeset(void *pthread_sock)
 
 int main()
 {
+    socklen_t s;
     pthread_t thread_id;
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 
