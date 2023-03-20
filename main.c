@@ -204,7 +204,7 @@ void *do_http_requeset(void *pthread_sock)
                 strcpy(path, "./html_docs/not_found.html");
                 server_reply.signal = 404;
                 strcpy(server_reply.describe, "NOT FOUND");
-            }//文件不存在
+            }//文件不存在,跳转到发送请求
             else
             {
                 if (S_ISDIR(st.st_mode))
