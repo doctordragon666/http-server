@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 
 #define PORT 80
-#define IP "192.168.127.130"
+#define IP "192.168.170.128"
 const int debug = 1;
 
 enum HEADER
