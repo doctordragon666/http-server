@@ -1,0 +1,79 @@
+/* 设置flexbox格式 */
+
+/* flexbox.css */
+
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+.profile-name {
+    display: flex;
+    flex-direction: column;
+}
+
+.follow-btn {
+    display: flex;
+    align-items: center;
+}
+
+#inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 20px;
+    background-color: #fff;
+}
+
+.date {
+    margin-top: 10px;
+}
+
+footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+.stats {
+    display: flex;
+    align-items: center;
+}
+
+.stats div {
+    margin-right: 20px;
+}
+
+.cta {
+    display: flex;
+    align-items: center;
+}
+
+.cta button {
+    margin-right: 10px;
+}
+
+a {
+    display: block;
+    margin-top: 20px;
+    text-decoration: none;
+    color: #007bff;
+}

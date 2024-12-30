@@ -1,4 +1,10 @@
-// 任意平台都有的头文件 every platform exists headers;
+/****************************************
+ * @date: 2022-10-23
+ * @brief: linux下开发的纯C语言http服务器
+ * 多线程处理请求，重点放在http协议解析上
+ ***************************************/
+
+ // 任意平台都有的头文件 every platform exists headers;
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -7,6 +13,7 @@
 // Linux系统头文件 Header Only On Linux
 #include <pthread.h>
 #include <unistd.h> //read,write
+
 // #include <sys/types.h>//
 #include <sys/socket.h> //socket
 #include <sys/signal.h>
@@ -15,8 +22,13 @@
 
 // 一些常量，方便测试 const varible to test
 #define PORT 80
-#define IP "192.168.170.128"
-const int debug = 1;
+#define IP "localhost"
+#define BACKLOG 128
+const int debug = 0;//仅用于本文件，用于调试
+
+//-------------------------------------------------------------------
+// 全局通用的结构体定义 global structure definition
+//-------------------------------------------------------------------
 
 enum HEADER
 {
@@ -33,9 +45,13 @@ typedef struct
     char describe[32]; // 描述
 } Server_Reply;
 
+//-------------------------------------------------------------------
+// 全局通用函数声明 global function declaration
+//-------------------------------------------------------------------
+
 /// @brief 打印错误信息
 /// @param tip 错误信息
-void DEBUG(const char *tip)
+void DEBUG(const char* tip)
 {
     if (tip == NULL)
         return;
@@ -49,13 +65,20 @@ void DEBUG(const char *tip)
 /// @brief sock出错处理
 /// @param ret socket的错误中有0的部分
 /// @param method 错误的方法名字
-void SOCKET_ERROR(int ret, const char *method)
+void SOCKET_ERROR(int ret, const char* method)
 {
     if (ret < 0)
     {
         perror(method);
-        exit(1);
+        exit(-1);
     }
+}
+
+//信号处理，按下ctrl+c
+void handle_exit_signal(int signal)
+{
+    perror("\nServer Stop! Please check the reason\n");
+    exit(signal);//默认处理信号
 }
 
 /// @brief 获取一行信息
@@ -63,7 +86,7 @@ void SOCKET_ERROR(int ret, const char *method)
 /// @param buf 读取容器
 /// @param size 读取大小
 /// @return 读取的长度
-int get_line(int sockfd, char *buf, int size)
+int get_line(int sockfd, char* buf, int size)
 {
     int count = 0;
     char c;
@@ -98,12 +121,18 @@ int get_line(int sockfd, char *buf, int size)
     return count;
 }
 
+//-------------------------------------------------------------------
+// HTML文件处理函数 HTML file processing function
+// head+page发送一个完整的HTML响应页面
+// do_http_requeset --> do_http_response ---> header + page
+//-------------------------------------------------------------------
+
 /// @brief 发送服务器标识头部
 /// @param client_sock 客户端句柄
 /// @param file_id 文件句柄
 /// @param server_reply 服务器响应
 /// @return 成功0失败-1
-int header(int client_sock, FILE *file_id, Server_Reply server_reply)
+int header(int client_sock, FILE* file_id, Server_Reply server_reply)
 {
     char buf[BUFSIZ] = "\0";
 
@@ -118,7 +147,7 @@ int header(int client_sock, FILE *file_id, Server_Reply server_reply)
     // 获取html文件大小
     int fileid = fileno(file_id);
     struct stat st;
-    SOCKET_ERROR(fstat(fileid, &st), "fstat");//在这里应该属于错误，立即中断。
+    SOCKET_ERROR(fstat(fileid, &st), "fstat");//在这里应该属于错误，立即中断。因为不存在的文件会返回not found
     snprintf(request_header, 64, "Content-Length:%ld\r\n\r\n", st.st_size);
     strcat(buf, request_header);
     DEBUG(buf);
@@ -135,7 +164,7 @@ int header(int client_sock, FILE *file_id, Server_Reply server_reply)
 /// @brief 写入html文件内容
 /// @param client_sock 客户端句柄
 /// @param file_id 文件句柄
-void page(int client_sock, FILE *file_id)
+void page(int client_sock, FILE* file_id)
 {
     char buf[1024];
 
@@ -152,9 +181,9 @@ void page(int client_sock, FILE *file_id)
 /// @param client_sock 客户端句柄
 /// @param path 文件路径
 /// @param server_reply 响应请求
-void do_http_response(int client_sock, char *path, Server_Reply server_reply)
+void do_http_response(int client_sock, char* path, Server_Reply server_reply)
 {
-    FILE *resource = fopen(path, "r");
+    FILE* resource = fopen(path, "r");
     if (resource == NULL)
     {
         perror("open file error");
@@ -162,6 +191,7 @@ void do_http_response(int client_sock, char *path, Server_Reply server_reply)
     }
 
     SOCKET_ERROR(header(client_sock, resource, server_reply), "header");
+
     page(client_sock, resource);
 
     fclose(resource);
@@ -171,9 +201,9 @@ void do_http_response(int client_sock, char *path, Server_Reply server_reply)
 /// @brief 发起请求
 /// @param pthread_sock 线程的句柄，就是多个句柄
 /// @return 空指针，线程终止信号
-void *do_http_requeset(void *pthread_sock)
+void* do_http_requeset(void* pthread_sock)
 {
-    int client_sock = *((int *)pthread_sock);
+    int client_sock = *((int*)pthread_sock);
     char read_buf[BUFSIZ] = "\0";
     char head_buf[HEADER_TYPE_LEN][BUFSIZ];
     char path[BUFSIZ] = "\0";
@@ -204,7 +234,7 @@ void *do_http_requeset(void *pthread_sock)
             {
                 memset(path, '\0', BUFSIZ);
                 strcpy(path, "./html_docs/not_found.html");
-                server_reply.signal = 404;
+                server_reply.signal = 404; // 文件不存在
                 strcpy(server_reply.describe, "NOT FOUND");
             } // 文件不存在,跳转到发送请求
             else
@@ -212,8 +242,8 @@ void *do_http_requeset(void *pthread_sock)
                 if (S_ISDIR(st.st_mode))
                 {
                     strcat(path, "index.html");
-                }
-                server_reply.signal = 200;
+                }// 是空的目录，自动映射到index.html
+                server_reply.signal = 200;// 请求成功
                 strcpy(server_reply.describe, "OK");
             } // 使用默认路径
         }     // get方法
@@ -221,7 +251,7 @@ void *do_http_requeset(void *pthread_sock)
         {
             DEBUG("it is other method\n");
             strcat(path, "./html_docs/unimplement.html");
-            server_reply.signal = 501;
+            server_reply.signal = 501;// 请求未实现
             strcpy(server_reply.describe, "Method Not Implemented");
         } // 其他方法不存在
     }     // 方法正确
@@ -229,7 +259,7 @@ void *do_http_requeset(void *pthread_sock)
     {
         DEBUG("request method error");
         strcat(path, "./html_docs/bad_request.html");
-        server_reply.signal = 400;
+        server_reply.signal = 400;//请求错误
         strcpy(server_reply.describe, "BAD REQUEST");
     }
     do_http_response(client_sock, path, server_reply);
@@ -238,24 +268,19 @@ void *do_http_requeset(void *pthread_sock)
     if (pthread_sock)
     {
         free(pthread_sock);
-    } // 要在线程函数内终止，否则会发生错误
+    } // 要在线程函数内终止
     return NULL;
-}
-
-//信号处理，按下ctrl+c
-void handle_exit_signal(int signal)
-{
-	perror("\nServer Stop! Please check the reason\n");
-	exit(signal);//默认处理信号
 }
 
 int main()
 {
-    pthread_t thread_id;
     signal(SIGINT, handle_exit_signal);  // CTRL+C
-	signal(SIGTERM, handle_exit_signal); // 终止信号
+    signal(SIGTERM, handle_exit_signal); // 终止信号
 
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+    //设置可重用
+    int opt = 1;
+    SOCKET_ERROR(setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)), "setsockopt");
 
     // 定义地址，协议和端口
     struct sockaddr_in server_addr;
@@ -263,21 +288,22 @@ int main()
     server_addr.sin_port = htons(PORT);
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    SOCKET_ERROR(bind(sock_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)), "bind");
-    SOCKET_ERROR(listen(sock_fd, 128), "listen");
+    SOCKET_ERROR(bind(sock_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)), "bind");
+    SOCKET_ERROR(listen(sock_fd, BACKLOG), "listen");
 
-    while (1)
+    pthread_t thread_id;
+    while (opt)//重用一下
     {
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
-        int client_fd = accept(sock_fd, (struct sockaddr *)&client_addr, &client_addr_len);
+        int client_fd = accept(sock_fd, (struct sockaddr*)&client_addr, &client_addr_len);
         SOCKET_ERROR(client_fd, "accept");
 
-        int *pclient_sock = (int *)malloc(sizeof(int));
-        *pclient_sock = client_fd;//这里不能取他的地址，这是线程处理的。
-        if (pthread_create(&thread_id, NULL, do_http_requeset, (void *)pclient_sock) != 0)
+        int* pclient_sock = (int*)malloc(sizeof(int));
+        *pclient_sock = client_fd;//这里不能直接取地址，因为client_fd是局部变量。
+        if (pthread_create(&thread_id, NULL, do_http_requeset, pclient_sock) != 0)
         {
-            fprintf(stderr, "pthread error, reason:%s", strerror(errno));
+            perror("pthread_create error");
             return -1;
         }
 
