@@ -24,7 +24,7 @@
 #define PORT 80
 #define IP "localhost"
 #define BACKLOG 128
-const int debug = 0;//仅用于本文件，用于调试
+const int debug = 1;//仅用于本文件，用于调试
 
 //-------------------------------------------------------------------
 // 全局通用的结构体定义 global structure definition
